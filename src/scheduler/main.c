@@ -17,9 +17,10 @@ Process* process_init(int pid, char **nombre, int tiempo_inicio, int fabrica, in
     new_process -> turnaround_time = 0;
     new_process -> response_time = 0;
     new_process -> waiting_time = 0;
+    new_process -> first_running_time = 0;
     //new_process -> rafaga_actual = NULL;
     new_process->rafagas = calloc(cantidad_rafagas, sizeof(int));
-    printf("retornando nuevo proceso\n");
+    //printf("retornando nuevo proceso\n");
 
 
     
@@ -39,14 +40,6 @@ Cpu* cpu_init(){
   Cpu* cpu = malloc(sizeof(Cpu));
   cpu -> exec = NULL;
   return cpu;
-};
-
-Rafaga* rafaga_init(int duracion){
-  Rafaga* new_rafaga = malloc(sizeof(Rafaga));
-  new_rafaga -> duracion = duracion;
-  new_rafaga -> restante = duracion;
-  new_rafaga -> next = NULL;
-  return new_rafaga;
 };
 
 // función scheduler:
@@ -131,20 +124,20 @@ void enviar_final_cola(Queue* queue, Process* process){
     if(queue->inicio == NULL){
       //printf("132");
       if(queue->last == NULL){
-        printf("la cola esta vacía. %s queda al inicio y final\n",process->nombre);
+        //printf("la cola esta vacía. %s queda al inicio y final\n",process->nombre);
         queue->inicio = process;
         queue->last = process;
       }
     }else{
       queue->last->next = process;
       queue->last = process;
-      printf("la cola tiene procesos. %s queda al final\n",process->nombre);
+      //printf("la cola tiene procesos. %s queda al final\n",process->nombre);
     }
   }
 
 // darle la raiz de la cola
 void free_process(Process* proceso){
-  printf("free de %s\n", proceso->nombre);
+  //printf("free de %s\n", proceso->nombre);
   if(proceso->next){
     free_process(proceso->next);
   }
@@ -159,11 +152,11 @@ int main(int argc, char **argv)
 {
   int q = 100;
   printf("Hello T2!\n");
-  printf("argv 0: %s\n", argv[0]); //scheduler
-  printf("argv 1: %s\n", argv[1]); //input.txt
-  printf("argv 2: %s\n", argv[2]); //output.csv
+  //printf("argv 0: %s\n", argv[0]); //scheduler
+  //printf("argv 1: %s\n", argv[1]); //input.txt
+  //printf("argv 2: %s\n", argv[2]); //output.csv
   if(argv[3] != NULL){
-    printf("argv 3: %s\n", argv[3]); // Q
+    //printf("argv 3: %s\n", argv[3]); // Q
     q = atoi(argv[3]);
   }
 
@@ -176,18 +169,15 @@ int main(int argc, char **argv)
 
   InputFile *file = read_file(argv[1]);
 
-  printf("Reading file of length %i:\n", file->len);
+  //printf("Reading file of length %i:\n", file->len);
   for (int i = 0; i < file->len; i++)
   {
     char **line = file->lines[i];
-    printf(
-        "\tProcess %s from factory %s has init time of %s and %s bursts.\n",
-        line[0], line[2], line[1], line[3]);
         contador_pid++;
         //printf("%s\n", line[0]);
         Process* new_process = process_init(contador_pid, line[0], atoi(line[1]), atoi(line[2]), 2*(atoi(line[3]))-1);
         //printf("Nuevo proceso de id: %i, nombre: %s, estado: %s\n", new_process->pid, new_process->nombre, new_process->estado);
-        printf("Nuevo proceso de id: %i\n",new_process->pid);
+        //printf("Nuevo proceso de id: %i\n",new_process->pid);
         //printf("nombre: %s\n",new_process->nombre);
         //printf("estado: %s\n",new_process->estado);
         
@@ -239,6 +229,12 @@ int main(int argc, char **argv)
   
   int tiempo = 0;
   int termino = 0;
+  Queue* final_queue;
+  final_queue = queue_init(file->len);
+  //Queue* sort_queue;
+  //sort_queue = queue_init(file->len);
+
+
   while(1){
     if(termino == 1){
       break;
@@ -273,9 +269,14 @@ int main(int argc, char **argv)
           cpu->exec->estado = "FINISHED";
           printf("[t = %i] process %s pasa a FINISHED\n", tiempo, cpu->exec->nombre);
           cpu->exec->turnaround_time = (tiempo - cpu->exec->tiempo_inicio);
-          printf("turnaround time %i\n", cpu->exec->turnaround_time);
-          printf("elecciones %i\n", cpu->exec->elecciones);
-          printf("interrupciones %i\n", cpu->exec->interrupciones);
+          cpu->exec->response_time = (cpu->exec->first_running_time - cpu->exec->tiempo_inicio );
+          //printf("nombre proceso %s\n", cpu->exec->nombre);
+          //printf("elecciones %i\n", cpu->exec->elecciones);
+          //printf("interrupciones %i\n", cpu->exec->interrupciones);
+          //printf("turnaround time %i\n", cpu->exec->turnaround_time);
+          //printf("waiting time %i\n", cpu->exec->waiting_time);
+          //printf("response time %i\n", cpu->exec->response_time);
+          enviar_final_cola(final_queue, cpu->exec);
           cpu->exec = NULL;
           if(process_queue->inicio == NULL){
             if(process_queue->last == NULL){
@@ -382,20 +383,23 @@ int main(int argc, char **argv)
         prioridad->estado = "READY"; // creo que ya esta en READY
         //printf("17\n");
         if (process_queue -> inicio == NULL){
-          printf("asignando inicio y final de process queue\n");
+          //printf("asignando inicio y final de process queue\n");
           process_queue -> inicio = prioridad;
           process_queue -> last = prioridad;
           prioridad->tiempo_inicio = tiempo;
+          printf("[t = %i] proceso %s creado.\n", tiempo, prioridad->nombre);
+
         }else{
-          printf("asignando final de process queue\n");
+          //printf("asignando final de process queue\n");
           process_queue -> last -> next = prioridad;
           process_queue -> last = prioridad;
           prioridad->tiempo_inicio = tiempo;
+          printf("[t = %i] proceso %s creado.\n", tiempo, prioridad->nombre);
         }
         //printf("18\n");
         prioridad = NULL;
-        printf("el proceso %s es el primero de process_queue\n", process_queue->inicio->nombre);
-        printf("el proceso %s es el ultimo de process_queue\n", process_queue->last->nombre);
+        //printf("el proceso %s es el primero de process_queue\n", process_queue->inicio->nombre);
+        //printf("el proceso %s es el ultimo de process_queue\n", process_queue->last->nombre);
     }
     // 3: Si no hay proceso en la CPU, se elije uno que pase a RUNNING
     if(process_queue->inicio == NULL){
@@ -412,6 +416,9 @@ int main(int argc, char **argv)
         cpu->exec->estado = "RUNNING";
         printf("[t = %i] process %s pasa a RUNNING\n", tiempo, cpu->exec->nombre);
         cpu->exec->elecciones++;
+        if(cpu->exec->first_running_time == 0){
+          cpu->exec->first_running_time = tiempo;
+        }
         process_queue->inicio = cpu->exec->next;
         if(process_queue->inicio == NULL){
           process_queue->last = NULL;
@@ -429,6 +436,9 @@ int main(int argc, char **argv)
             cpu->exec->quantum = quantum1;
             cpu->exec->estado = "RUNNING";
             printf("[t = %i] process %s pasa a RUNNING\n", tiempo, cpu->exec->nombre);
+            if(cpu->exec->first_running_time == 0){
+            cpu->exec->first_running_time = tiempo;
+            }
             cpu->exec->elecciones++;
             aux_ready->next = cpu->exec->next;
             cpu->exec->next = NULL;
@@ -445,8 +455,12 @@ int main(int argc, char **argv)
     Process* aux_waiting = process_queue->inicio;
     while(aux_waiting != NULL){
       //printf("425\n");
+      if(aux_waiting->estado == "READY"){
+        aux_waiting->waiting_time++;
+      }
       if(aux_waiting->estado == "WAITING"){
         //printf("427\n");
+        aux_waiting->waiting_time++;
         int indice_rafaga = 0;
         for (int i = 0; i < aux_waiting->cantidad_rafagas; i++){
           if(aux_waiting->rafagas[i] != 0){
@@ -466,11 +480,61 @@ int main(int argc, char **argv)
     }
   tiempo++;
   }
-  printf("a\n");
-  //free_process(process_queue->inicio);
-  printf("b\n");
-  //free_queue(new_queue);
-  printf("c\n");
-  //free_queue(process_queue);
+
+  //InputFile *file = read_file(argv[1]);
+    char* fileName = argv[2];
+    //char* fileType = ".csv";
+    char nombre_output[20];
+    FILE* f = NULL; 
+    sprintf(nombre_output, "%s", fileName);
+    f = fopen(nombre_output, "w");
+
+  //printf("Reading file of length %i:\n", file->len);
+  for (int i = 0; i < file->len; i++)
+  {
+    char **line = file->lines[i];
+    Process* aux_final = final_queue->inicio;
+    while(aux_final != NULL){
+      if(aux_final->nombre == line[0]){
+        //printf("nombre proceso %s\n", aux_final->nombre);
+        //printf("elecciones %i\n", aux_final->elecciones);
+        //printf("interrupciones %i\n", aux_final->interrupciones);
+        //printf("turnaround time %i\n", aux_final->turnaround_time);
+        //printf("waiting time %i\n", aux_final->waiting_time);
+        //printf("response time %i\n", aux_final->response_time);
+        fprintf(f, "%s,%i,%i,%i,%i,%i\n",aux_final->nombre , aux_final->elecciones, aux_final->interrupciones, aux_final->turnaround_time, aux_final->response_time, aux_final->waiting_time);
+        //enviar_final_cola(sort_queue, aux_final);
+      }
+      aux_final = aux_final->next;
+      }
+  }
+  fclose(f);
+
+     
+  //printf("a\n");
+  free_process(final_queue->inicio);
+  //printf("b\n");
+  free_queue(new_queue);
+  free_queue(process_queue);
+  free_queue(final_queue);
+  //printf("c\n");
 }
 
+/*
+ //printf("EL INDICE DEL REPARTIDOR ES: %d\n", indice);
+    char* fileName = argv[2];
+    char* fileType = ".csv";
+    char nombre_output[20];
+    FILE* f = NULL; 
+    sprintf(nombre_output, "%s%s", fileName, fileType);
+    f = fopen(nombre_output, "w");
+    // recorrer la lista ordenada de procesos y fprintf de stats
+    Process* aux_sort = sort_queue->inicio;
+    while(aux_sort != NULL){
+      fprintf(f, "%s,%i,%i,%i,%i,%i",aux_sort->nombre , aux_sort->elecciones, aux_sort->interrupciones, aux_sort->turnaround_time, aux_sort->response_time, aux_sort->waiting_time);
+      aux_sort = aux_sort->next;
+      }
+    
+    fclose(f);
+
+*/
